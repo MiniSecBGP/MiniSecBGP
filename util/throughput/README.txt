@@ -21,3 +21,7 @@ O arquivo "vazao.csv" é processado pelo script em R denominado "vazao.r".
 --> vazao.r
 
 O arquivo vazao.r (armazenado na pasta "R") contém o código que gera a figura contendo boxplots que apresentam a relação de vazão observada no servidor.
+
+Alguns pacotes são necessários no R para rodar o gráfico. Segue comandos para instalação:
+R> install.packages("ggplot2")
+

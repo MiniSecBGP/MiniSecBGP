@@ -14,11 +14,13 @@ path_csv = 'csv/'
 fileToSaveCsv = 'vazao.csv'
 fileCsvToErase = 'vazao.csv'
 
+# especifica as quantidades de hosts das quais serao considerados os valores dos testes com iPerf3
+range_qtdhosts = ('2','4','6','8','10','30','50','100')
+
 # matriz_full = ['rodada','qtdhosts','range1','range2','vazao','escala']
 matriz_full = []
 # matriz_vazao = ['qtdhosts','vazao']
 matriz_vazao = []
-
 
 # apagando algum arquivo csv pre-existente
 try:
@@ -60,7 +62,7 @@ for files in sorted(os.listdir(path_log)):
             linha_matriz_full.append(file[2])
             # numero da quantidade de conteineres (qtdhosts)
             linha_matriz_full.append(file[4])
-            linha_matriz_vazao.append(file[4])
+            linha_matriz_vazao.append(str(file[4]))
             # numero da range1
             linha_matriz_full.append(file[5][-1])
             # numero da range2
@@ -79,16 +81,17 @@ for files in sorted(os.listdir(path_log)):
             # tipo de escala
             linha_matriz_full.append(last_line_sem_espacos[7])
 
-            # gravos as linhas na matriz final
-            matriz_full.append(linha_matriz_full)
-            matriz_vazao.append(linha_matriz_vazao)
-
-            # monto a linha do csv que sera gravado no arquivo
-            csvLine = (matriz_vazao[linha][0] + ',' + matriz_vazao[linha][1])
-            # chamo a funcao para gravacao no arquivo
-            saveCsvToAFile(csvLine, path_csv, fileToSaveCsv)
-            # incremento a variavel linha para gravar a proxima linha no proximo loop do for
-            linha = linha + 1
+            # esse if verifica se o numero de rodada eh igual ao range de quantidades de hosts analisados e informados no inicio do programa
+            if linha_matriz_vazao[0] in range_qtdhosts:
+                # gravos as linhas na matriz final
+                matriz_full.append(linha_matriz_full)
+                matriz_vazao.append(linha_matriz_vazao)
+                # monto a linha do csv que sera gravado no arquivo
+                csvLine = (matriz_vazao[linha][0] + ',' + matriz_vazao[linha][1])
+                # chamo a funcao para gravacao no arquivo
+                saveCsvToAFile(csvLine, path_csv, fileToSaveCsv)
+                # incremento a variavel linha para gravar a proxima linha no proximo loop do for
+                linha = linha + 1
 
         except IndexError:
             print('erro no processamento do arquivo ' + files)
