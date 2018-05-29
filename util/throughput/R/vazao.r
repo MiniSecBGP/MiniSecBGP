@@ -1,7 +1,7 @@
 rm(list = ls())
 library(ggplot2)
 
-df <- read.csv('/home/tocha/git/MiniSecBGP/util/throughput/csv/vazao.csv')
+df <- read.csv('../csv/vazao.csv')
 
 df$qtdhosts <- factor(df$qtdhosts)
 
