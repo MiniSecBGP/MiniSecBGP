@@ -13,3 +13,4 @@ function welcome() {
                    Note: the user "minisecbgp" will be created, so it should not exist previously.'
 }
 
+welcome;
