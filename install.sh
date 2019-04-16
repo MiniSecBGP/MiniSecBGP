@@ -44,6 +44,29 @@ function network_configuration() {
     printf '%s\n' $'auto lo\niface lo inet loopback\n\nallow-hotplug eth0\niface eth0 inet dhcp' | sudo tee /etc/network/interfaces
 }
 
+function hosts_file() {
+    printf '\n\e[1;33m%-6s\e[m\n' '-- Configuring "/etc/hosts" file...'
+    sudo sed -i -- 's/preserve_hostname: false/preserve_hostname: true/g' /etc/cloud/cloud.cfg
+    printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous configuration.'
+    sudo cp /dev/null /etc/hosts
+    printf '%s\n' "127.0.0.1	localhost.localdomain	localhost" | sudo tee /etc/hosts
+    for ((i=1; i<=$var_qtd_hosts; i++)); do
+        printf '%s\n' "192.168.254.$i    node$i" | sudo tee --append /etc/hosts; done
+}
+
+function node_file() {
+    printf '\n\e[1;33m%-6s\e[m\n' '-- Creating configuration file for all cluster nodes ...'
+    printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous configuration.'
+    sudo -u $USER rm -rf $INSTALL_DIR/nodes 2> /dev/null
+    sudo -u $USER mkdir -p $INSTALL_DIR/nodes
+    for ((i=1; i<=$var_qtd_hosts; i++)); do
+        sudo -u $USER cp $INSTALL_DIR/scripts/template_node.sh $INSTALL_DIR/nodes/node$i.sh;
+        sudo -u $USER sed -i -- 's/<node_number>/'$i'/g' $INSTALL_DIR/nodes/node$i.sh;
+        sudo -u $USER chmod 755 $INSTALL_DIR/nodes/node$i.sh; done
+    printf '\n%s\n' 'showing nodes file'
+    cat $INSTALL_DIR/nodes/node*.sh
+}
+
 function install_metis() {
     printf '\e[1;33m%-6s%s\e[m\n' 'Installing METIS in ' $INSTALL_DIR/metis
     printf '\n\e[1;33m%-6s\e[m\n' 'Resolving requirements'
@@ -98,4 +121,6 @@ welcome;
 qtd_hosts;
 update_SO_install_packages;
 network_configuration;
+hosts_file;
+node_file;
 install_app_maxinet;
