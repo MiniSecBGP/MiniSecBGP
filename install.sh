@@ -9,7 +9,8 @@ function welcome() {
                    - Ubuntu 18.04.1 Server LTS (Bionic Beaver)
                    - 2 NICs (one for administration and other for cluster nodes network communication)
                    - Internet access
-                   - Initial user with "sudo" rights
+                   - User with "sudo" rights
+		   - MiniSecBGP will be installed in current user home directory
                    Note: the user "minisecbgp" will be created, so it should not exist previously.'
 }
 
