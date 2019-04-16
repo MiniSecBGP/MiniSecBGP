@@ -52,7 +52,7 @@ function install_metis() {
     sudo -u $USER rm -rf $INSTALL_DIR/metis-5.1.0* 2> /dev/null
 
     #[ -f $INSTALL_DIR/metis-5.1.0.tar.gz ] || sudo -u $USER wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.1.0.tar.gz -P $INSTALL_DIR
-    [ -f $INSTALL_DIR/metis-5.1.0.tar.gz ] || sudo -u $USER tar -xvzf $INSTALL_DIR/metis-5.1.0.tar.gz -C $INSTALL_DIR
+    [ -f $INSTALL_DIR/metis-5.1.0.tar.gz ] || sudo -u $USER wget http://192.168.56.1/metis-5.1.0.tar.gz -P $INSTALL_DIR 
     
     sudo -u $USER tar -xvzf $INSTALL_DIR/metis-5.1.0.tar.gz -C $INSTALL_DIR
     cd $INSTALL_DIR/metis-5.1.0
