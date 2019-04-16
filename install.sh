@@ -13,4 +13,14 @@ function welcome() {
                    Note: the user "minisecbgp" will be created, so it should not exist previously.'
 }
 
+function update_SO_install_packages() {
+    printf '\n\e[1;33m%-6s\e[m\n' '-- Installing SO updates and packages install...'
+    printf '\e[1;33m%-6s\e[m\n' 'Please, confirm if the computer has internet connectivity.'
+    sudo apt update
+    sudo apt install language-pack-pt -y
+    sudo apt upgrade -y
+    sudo apt install python python3 python-pip python3-pip -y
+}
+
 welcome;
+update_SO_install_packages;
