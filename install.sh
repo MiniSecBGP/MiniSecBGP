@@ -149,6 +149,6 @@ update_SO_install_packages;
 network_configuration;
 hosts_file;
 node_file;
-install_app_mininet;
-install_app_maxinet;
+#install_app_mininet;
+#install_app_maxinet;
 install_app_containernet;
