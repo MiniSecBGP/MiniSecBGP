@@ -67,6 +67,21 @@ function node_file() {
     cat $INSTALL_DIR/nodes/node*.sh
 }
 
+function install_app_mininet() {
+    printf '\n\e[1;33m%-6s\e[m\n' '-- Installing Mininet 2.3.0d4 ...'
+    printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous configuration.'
+    sudo -u $USER rm -rf $INSTALL_DIR/mininet 2> /dev/null
+    printf '\e[1;33m%-6s%s\e[m\n' 'Installing Mininet in ' $INSTALL_DIR/mininet
+    sudo -u $USER git clone git://github.com/mininet/mininet $INSTALL_DIR/mininet
+    cd $INSTALL_DIR/mininet
+    sudo -u $USER git checkout -b 2.3.0d4 2.3.0d4
+    printf '\n\e[1;33m%-6s\e[m\n' 'Fixing iproute Mininet issue (using iproute2)'
+    sudo -u $USER sed -i -- 's/iproute /iproute2 /g' $INSTALL_DIR/mininet/util/install.sh
+    sudo $INSTALL_DIR/mininet/util/install.sh -a
+    printf '\n\e[1;33m%-6s\e[m\n' 'Testing Mininet'
+    sudo mn --test pingall
+}
+
 function install_metis() {
     printf '\e[1;33m%-6s%s\e[m\n' 'Installing METIS in ' $INSTALL_DIR/metis
     printf '\n\e[1;33m%-6s\e[m\n' 'Resolving requirements'
@@ -112,6 +127,17 @@ function install_app_maxinet() {
     sudo cat /etc/MaxiNet.cfg    
 }
 
+function install_app_containernet() {
+    printf '\n\e[1;32m%-6s\e[m\n' '-- Installing Containernet ...'
+    printf '\n\e[1;33m%-6s\e[m\n' 'Resolving requirements'
+    sudo apt-get install ansible git aptitude
+    sudo -u $USER git clone https://github.com/containernet/containernet.git $INSTALL_DIR/containernet
+    cd $INSTALL_DIR/containernet/ansible
+    sudo ansible-playbook -i "localhost," -c local install.yml
+    cd ..
+    sudo python setup.py install
+}
+
 # set up build directory
 USER=$(whoami)
 HOME_DIR=$(echo $HOME)
@@ -123,4 +149,6 @@ update_SO_install_packages;
 network_configuration;
 hosts_file;
 node_file;
+install_app_mininet;
 install_app_maxinet;
+install_app_containernet;
