@@ -31,7 +31,7 @@ function update_SO_install_packages() {
     sudo apt update
     sudo apt install language-pack-pt -y
     sudo apt upgrade -y
-    sudo apt install python python3 python-pip python3-pip -y
+    sudo apt install python python3 python-pip python3-pip ifupdown -y
 }
 
 function network_configuration() {
