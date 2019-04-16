@@ -49,10 +49,7 @@ function install_metis() {
     sudo apt install cmake -y
     printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous configuration.'
     sudo -u $USER rm -rf $INSTALL_DIR/metis-5.1.0* 2> /dev/null
-    
-    sudo -u $USER wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.1.0.tar.gz -P $INSTALL_DIR
-    #sudo -u $USER wget http://192.168.56.254/metis-5.1.0.tar.gz -P $INSTALL_DIR
-    
+    [ -f $INSTALL_DIR/metis-5.1.0.tar.gz ] || sudo -u $USER wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.1.0.tar.gz -P $INSTALL_DIR
     sudo -u $USER tar -xvzf $INSTALL_DIR/metis-5.1.0.tar.gz -C $INSTALL_DIR
     cd $INSTALL_DIR/metis-5.1.0
     sudo make config shared=1
