@@ -44,8 +44,8 @@ function network_configuration() {
 function hosts_file() {
     printf '\n\e[1;33m%-6s\e[m\n' '-- Configuring "/etc/hosts" file...'
     printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous configuration.'
-    hostname=$(hostname)
-    printf '%s\n' "127.0.0.1 localhost.localdomain localhost $hostname" | sudo tee /etc/hosts
+    sudo hostnamectl set-hostname localhost
+    printf '%s\n' "127.0.0.1 localhost.localdomain localhost" | sudo tee /etc/hosts
     for ((i=1; i<=$var_qtd_hosts; i++)); do
         printf '%s\n' "192.168.254.$i    node$i" | sudo tee --append /etc/hosts; done
 }
