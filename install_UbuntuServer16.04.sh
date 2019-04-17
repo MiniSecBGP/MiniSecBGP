@@ -45,7 +45,6 @@ function hosts_file() {
     printf '\n\e[1;33m%-6s\e[m\n' '-- Configuring "/etc/hosts" file...'
     printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous configuration.'
     hostname=$(hostname)
-    sudo cp /dev/null /etc/hosts
     printf '%s\n' "127.0.0.1 localhost.localdomain localhost $hostname" | sudo tee /etc/hosts
     for ((i=1; i<=$var_qtd_hosts; i++)); do
         printf '%s\n' "192.168.254.$i    node$i" | sudo tee --append /etc/hosts; done
@@ -67,7 +66,7 @@ function node_file() {
 function install_app_containernet() {
     printf '\n\e[1;32m%-6s\e[m\n' '-- Installing Containernet ...'
     printf '\n\e[1;33m%-6s\e[m\n' 'Resolving requirements'
-    sudo apt-get install ansible git aptitude
+    sudo apt-get install ansible git aptitude -y
     sudo -u $USER git clone https://github.com/containernet/containernet.git $INSTALL_DIR/containernet
     cd $INSTALL_DIR/containernet/ansible
     sudo ansible-playbook -i "localhost," -c local install.yml
