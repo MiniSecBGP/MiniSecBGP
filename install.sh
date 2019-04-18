@@ -85,7 +85,7 @@ function node_file() {
     sudo -u $USER rm -rf $INSTALL_DIR/nodes 2> /dev/null
     sudo -u $USER mkdir -p $INSTALL_DIR/nodes
     for ((i=1; i<=$var_qtd_hosts; i++)); do
-        sudo -u $USER cp $INSTALL_DIR/scripts/template_node.sh $INSTALL_DIR/nodes/node$i.sh;
+        sudo -u $USER cp $INSTALL_DIR/scripts/nodes/template_node.sh $INSTALL_DIR/nodes/node$i.sh;
         sudo -u $USER sed -i -- 's/<node_number>/'$i'/g' $INSTALL_DIR/nodes/node$i.sh;
         sudo -u $USER chmod 755 $INSTALL_DIR/nodes/node$i.sh; done
     printf '\n%s\n' 'showing nodes file'
