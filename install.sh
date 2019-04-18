@@ -29,7 +29,7 @@ function update_SO_install_packages() {
     printf '\e[1;33m%-6s\e[m\n' 'Please, confirm if the computer has internet connectivity.'
     sudo apt update
     sudo apt upgrade -y
-    sudo apt install htop -y
+    sudo apt install htop whois -y
 }
 
 function network_configuration() {
