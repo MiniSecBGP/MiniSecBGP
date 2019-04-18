@@ -50,6 +50,35 @@ function hosts_file() {
         printf '%s\n' "192.168.254.$i    node$i" | sudo tee --append /etc/hosts; done
 }
 
+function user() {
+    printf '\n\e[1;33m%-6s\e[m\n' '-- Creating "maxinet" user for MaxiNet to work...'
+    printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous "maxinet" user data.'
+    sudo userdel -r maxinet 2> /dev/null
+    sudo useradd -m -p $(mkpasswd -m sha-512 -S saltsalt -s <<< maxinet) -s /bin/bash maxinet
+    printf '\e[1;33m%-6s\e[m\n' 'Putting "maxinet" user in sudoers'
+    printf '%s\n' 'maxinet     ALL=NOPASSWD: ALL' | sudo tee --append /etc/sudoers
+}
+
+function ssh_file() {
+    printf '\n\e[1;33m%-6s\e[m\n' '-- Configuring SSH...'
+    sudo sed -i -- 's/#PermitTunnel no/PermitTunnel yes/g' /etc/ssh/sshd_config
+    printf '\n\e[1;33m%-6s\e[m\n' 'Creating and exchanging SSH key for "maxinet" user'
+    sudo -u maxinet ssh-keygen -t rsa -N "" -f /home/maxinet/.ssh/id_rsa
+    printf '\n\e[1;33m%-6s\e[m\n' 'Adding "maxinet" user key in the authorized_keys'
+    for (( c=1; c<=$var_qtd_hosts; c++ )); do
+        sudo -u maxinet cat /home/maxinet/.ssh/id_rsa.pub | \
+        sudo -u maxinet tee --append /home/maxinet/.ssh/authorized_keys; done
+    printf '\n\e[1;33m%-6s\e[m\n' 'Changing hostnames keys in authorized_keys'
+    for i in $(sudo -u maxinet cat -n /home/maxinet/.ssh/authorized_keys | awk '{print $1}'); do
+        sudo -u maxinet sed -Ei "${i}s/@.*/@node$i/" /home/maxinet/.ssh/authorized_keys; done
+    printf '\n%s\n' 'showing /home/maxinet/.ssh/authorized_keys'
+    sudo -u maxinet cat /home/maxinet/.ssh/authorized_keys
+    sudo -u maxinet chmod 755 /home/maxinet/.ssh/authorized_keys
+    printf '%s\n' $'Host *\nStrictHostKeyChecking no' | \
+	sudo -u maxinet tee --append /home/maxinet/.ssh/config
+    sudo -u maxinet chmod 400 /home/maxinet/.ssh/config
+}
+
 function node_file() {
     printf '\n\e[1;33m%-6s\e[m\n' '-- Creating configuration file for all cluster nodes ...'
     printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous configuration.'
@@ -107,10 +136,10 @@ function install_app_maxinet() {
     sudo make install
     sudo cp $INSTALL_DIR/MaxiNet/share/MaxiNet-cfg-sample /etc/MaxiNet.cfg
     printf '\e[1;33m%-6s\e[m\n' 'Configuring MaxiNet config file.'
-    sudo sed -i -- 's/password = HalloWelt/password = abc123/g' /etc/MaxiNet.cfg
+    sudo sed -i -- 's/password = HalloWelt/password = maxinet/g' /etc/MaxiNet.cfg
     sudo sed -i -- 's/controller = 192.168.123.1:6633/controller = 192.168.254.1:6633/g' /etc/MaxiNet.cfg
     sudo sed -i -- 's/logLevel = INFO/logLevel = ERROR/g' /etc/MaxiNet.cfg
-    sudo sed -i -- 's/sshuser = root/sshuser = '$USER'/g' /etc/MaxiNet.cfg
+    sudo sed -i -- 's/sshuser = root/sshuser = maxinet/g' /etc/MaxiNet.cfg
     sudo sed -i -- 's/usesudo = False/usesudo = True/g' /etc/MaxiNet.cfg
     sudo sed -i -- 's/ip = 192.168.123.1/ip = 192.168.254.1/g' /etc/MaxiNet.cfg
     sudo sed -i -- 19,'$d' /etc/MaxiNet.cfg
@@ -129,6 +158,8 @@ qtd_hosts;
 update_SO_install_packages;
 network_configuration;
 hosts_file;
+user;
+ssh_file;
 node_file;
 install_app_containernet;
 install_app_maxinet;
