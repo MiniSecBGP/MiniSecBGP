@@ -1,0 +1,86 @@
+{% extends "topologiesDetailBase.jinja2" %}
+
+{% block contentTopologiesDetailBase %}
+
+  <div class=" {{ css_class }} ">
+    <p> {{ message }} </p>
+  </div>
+
+  <div id="aum" class="container-fluid">
+    <div class="row-fluid">
+      <div class="span12">
+        <h3 align="center">BGP Peering: {{ topology.topology }} </h3>
+      </div>
+    </div>
+
+    <div class="row-fluid">
+      <div class="span12" align="center">
+
+        {% if request.user.role == 'admin' %}
+          <form action="{{ request.route_url('linkAction',action='addEditDelete', id_topology = topology.id) }}" method="POST">
+            <div class="form-field">
+              <p>Enter the ASN for which you want to create, edit or delete peering: {{ form.autonomous_system }}</p>
+              {% if form.autonomous_system.errors %}
+                <ul class="errorMessage">
+                  {% for error in form.autonomous_system.errors %}
+                    <li>{{ error }}</li>
+                  {% endfor %}
+                </ul>
+              {% endif %}
+            </div>
+
+            <div class="form-button">
+              <p>
+                <button type="submit" class="btn btn-primary">Enter</button>
+              </p>
+            </div>
+
+          </form>
+          <hr>
+        {% endif %}
+
+        <form action="#" method="POST">
+          <div class="form-button">
+            <p>
+              <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#showAllModal">Show all BGP peers</button>
+            </p>
+            <p>* Show all BGP peers may take a while due to the large number of registries.</p>
+          </div>
+
+          <div class="modal fade" id="showAllModal" tabindex='-1' role="dialog" aria-labelledby="showAllModal" aria-hidden="true" align="left">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <button type="button" class="close" data-dismiss="modal">&times;</button>
+                  <h4 class="modal-title">Report layout</h4>
+                </div>
+                <div class="modal-body">
+                  <p>Choose the report layout:</p>
+                  <p>- <a href="{{ request.route_url('linkShowAllTxt', id_topology = topology.id) }}" target="_blank">
+                    Text report</a>: lighter, but simpler</p>
+                  <p>- <a href="{{ request.route_url('linkShowAllHtml', id_topology = topology.id) }}" target="_blank">
+                    HTML report</a>: more elaborate, but with much heavier processing</p>
+                </div>
+                <div class="modal-footer">
+                  <div class="form-group">
+                    <button type="button" class="btn btn-primary"
+                            onclick="window.open('{{ request.route_url('linkShowAllTxt', id_topology = topology.id) }}','_blank')">
+                      Text report
+                    </button>
+                    <button type="button" class="btn btn-primary"
+                            onclick="window.open('{{ request.route_url('linkShowAllHtml', id_topology = topology.id) }}','_blank')">
+                      HTML report
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+{% endblock contentTopologiesDetailBase %}

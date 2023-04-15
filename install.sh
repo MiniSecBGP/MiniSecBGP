@@ -1,165 +1,256 @@
 #!/bin/bash
 
-# MiniSecBGP install script for Ubuntu 18.04.1 Server LTS (Bionic Beaver)
-# Emerson Barea (emerson.barea@gmail.com)
+# author: Emerson Barea (emerson.barea@gmail.com)
 
-function welcome() {
-    printf '\n%s\n' 'This script creates the complete environment for MiniSecBGP.
-                   Some requirements must be met:
-                   - Ubuntu 18.04.1 Server LTS (Bionic Beaver)
-                   - 2 NICs (one for administration and other for cluster nodes network communication)
-                   - Internet access
-                   - User with "sudo" rights
-		   - MiniSecBGP will be installed in current user home directory
-                   Note: the user "minisecbgp" will be created, so it should not exist previously.'
+if [ "$1" == "--help" ] || [ "$1" == "-h" ] ; then
+  printf "\nInvoke without any parameter for complete and unguided installation of MiniSecBGP and its dependencies.\n\n"
+	exit 0
+fi
+
+if [ "$1" != "" ] ; then
+	printf "\nWrong parameter '$1'.\nInvoke without any parameter for complete and unguided installation of MiniSecBGP and its dependencies.\n\n"
+	exit 0
+fi
+
+welcome() {
+	printf "\nMiniSecBGP 1.0 installer\n
+	This script install MiniSecBGP 1.0 and all requirements to the home directory of \"minisecbgpuser\" user on Ubuntu Server 18.04 LTS
+	It will automatically remove existing \"minisecbgpuser\" user and erase all data in '/home/minisecbgpuser' directory
+
+	Execute 'install.sh -h' or 'install.sh --help' to help\n
+
+	This installer will now configure:
+	  - erase and recreate \"minisecbgpuser\" user and home directory (username = \"minisecbgpuser\" | password = <current user password>)
+	  - configure user \"minisecbgpuser\" in sudoers
+
+	This installer will now install:
+	  - upgrade Operational System
+	  - install MiniSecBGP requirements
+	    - Containernet 2.2.1
+	    - Metis 5.1
+	    - Pyro 4
+	    - MaxiNet 1.2
+	    - Quagga 1.2
+ 	  - install MiniSecBGP application
+
+	Obs.: thank you MaxiNet install program (https://raw.githubusercontent.com/MaxiNet/MaxiNet/master/installer.sh)\n\n"
+
+	read -n1 -r -p "Press ANY key to continue or CTRL+C to abort." abort
 }
 
-function qtd_hosts() {
-    printf '\n%s' 'How many cluster nodes do you want to create? (write only numbers. Ex.: 3): '
-    read var_qtd_hosts
-    re='^[0-9]+$'
-    if ! [[ $var_qtd_hosts =~ $re ]] ; then
-        printf '\e[1;31m%-6s\e[m' 'error: Write only numbers'
-        qtd_hosts;
-    fi
+
+network_address() {
+        if [ "${#IP_ARRAY[@]}" -gt 1 ] ; then
+          printf '\n\n%s\n' 'This computer has '${#IP_ARRAY[@]}' IP addresses configured on network interfaces:'
+          for ip in "${IP_ARRAY[@]}"
+          do
+            printf '\n- %s' $ip
+          done
+          printf '\n\n%s' 'Choose which IP address should be used to communicate with other cluster nodes: (Ex.: '${IP_ARRAY[0]}'): '
+
+          read temp_ip
+
+          for i in "${IP_ARRAY[@]}"
+          do
+            if [ "$temp_ip" == "$i" ]; then
+              var_ip="$temp_ip"
+            fi
+          done
+
+          if ! [[ "$var_ip" ]] ; then
+            printf '\e[1;31m%-6s\e[m\n' 'error: Choose and write only one of the valid IP addresses from the list above. (Ex.: '${IP_ARRAY[0]}')'
+            network_address;
+          fi
+        else
+          var_ip="${IP_ARRAY[0]}"
+        fi
 }
 
-function update_SO_install_packages() {
-    printf '\n\e[1;33m%-6s\e[m\n' '-- Installing SO updates and packages install...'
-    printf '\e[1;33m%-6s\e[m\n' 'Please, confirm if the computer has internet connectivity.'
-    sudo apt update
-    sudo apt upgrade -y
-    sudo apt install htop whois -y
+update() {
+        printf '\n\e[1;33m%-6s\e[m\n' '-- Updating Linux ...'
+        printf '[sudo] senha para '$WHOAMI':'
+        read -s PASSWORD
+        echo "$PASSWORD" | sudo -S apt update;
+        sudo apt upgrade -y;
+        sudo apt -f install -y;
+        sudo apt autoremove -y;
 }
 
-function network_configuration() {
-    printf '\n\e[1;33m%-6s\e[m\n' '-- Configuring network interfaces...'
-    printf '\e[1;33m%-6s\e[m\n' 'Erasing all network previous configuration and renaming NIC interfaces to "eth0" and "eth1".'
-    sudo sed -i -- 's/GRUB_CMDLINE_LINUX=""/GRUB_CMDLINE_LINUX="net.ifnames=0 biosdevname=0"/g' /etc/default/grub
-    sudo grub-mkconfig -o /boot/grub/grub.cfg
-    printf '\e[1;33m%-6s\e[m\n' 'eth0 will be configured to DHCP client after reboot'
-    printf '%s\n' $'auto lo\niface lo inet loopback\n\nallow-hotplug eth0\niface eth0 inet dhcp' | sudo tee /etc/network/interfaces
+
+install_Linux_reqs() {
+        printf '\n\e[1;33m%-6s\e[m\n' '-- Installing Linux prerequisites ...'
+        sudo apt install vim net-tools ssh git aptitude whois sshpass nginx uwsgi python3-pip python3-venv postgresql postgresql-contrib postgresql-server-dev-all ansible zlib1g zlib1g-dev libjpeg-dev -y;
+        printf '\n\e[1;32m%-6s\n\n%s\n%s\n%s\n%s\n%s\n\n%s\n\n\e[m' \
+               'The following programs have been installed:' '    - Nginx' '    - uWsgi' '    - Python3' '    - Postgresql'
 }
 
-function hosts_file() {
-    printf '\n\e[1;33m%-6s\e[m\n' '-- Configuring "/etc/hosts" file...'
-    printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous configuration.'
-    sudo hostnamectl set-hostname localhost
-    printf '%s\n' "127.0.0.1 localhost.localdomain localhost" | sudo tee /etc/hosts
-    for ((i=1; i<=$var_qtd_hosts; i++)); do
-        printf '%s\n' "192.168.254.$i    node$i" | sudo tee --append /etc/hosts; done
+
+virtualenv() {
+        printf '\n\e[1;33m%-6s\e[m\n' '-- Creating Python Virtualenv ...'
+        deactivate &> /dev/null
+        rm -rf "$LOCAL_HOME"/venv
+        python3 -m venv "$LOCAL_HOME"/venv
+        source "$LOCAL_HOME"/venv/bin/activate
 }
 
-function user() {
-    printf '\n\e[1;33m%-6s\e[m\n' '-- Creating "maxinet" user for MaxiNet to work...'
-    printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous "maxinet" user data.'
-    sudo userdel -r maxinet 2> /dev/null
-    sudo useradd -m -p $(mkpasswd -m sha-512 -S saltsalt -s <<< maxinet) -s /bin/bash maxinet
-    printf '\e[1;33m%-6s\e[m\n' 'Putting "maxinet" user in sudoers'
-    printf '%s\n' 'maxinet     ALL=NOPASSWD: ALL' | sudo tee --append /etc/sudoers
+
+install_Python_reqs() {
+        printf '\n\e[1;33m%-6s\e[m\n' '-- Installing Python prerequisites ...'
+        pip3 install --upgrade --force-reinstall -U wheel 
+	pip3 install --upgrade --force-reinstall -U pillow
+	pip3 install --upgrade --force-reinstall -U plotnine
+        pip3 install -r "$LOCAL_HOME"/requirements.txt;
 }
 
-function ssh_file() {
-    printf '\n\e[1;33m%-6s\e[m\n' '-- Configuring SSH...'
-    sudo sed -i -- 's/#PermitTunnel no/PermitTunnel yes/g' /etc/ssh/sshd_config
-    printf '\n\e[1;33m%-6s\e[m\n' 'Creating and exchanging SSH key for "maxinet" user'
-    sudo -u maxinet ssh-keygen -t rsa -N "" -f /home/maxinet/.ssh/id_rsa
-    printf '\n\e[1;33m%-6s\e[m\n' 'Adding "maxinet" user key in the authorized_keys'
-    for (( c=1; c<=$var_qtd_hosts; c++ )); do
-        sudo -u maxinet cat /home/maxinet/.ssh/id_rsa.pub | \
-        sudo -u maxinet tee --append /home/maxinet/.ssh/authorized_keys; done
-    printf '\n\e[1;33m%-6s\e[m\n' 'Changing hostnames keys in authorized_keys'
-    for i in $(sudo -u maxinet cat -n /home/maxinet/.ssh/authorized_keys | awk '{print $1}'); do
-        sudo -u maxinet sed -Ei "${i}s/@.*/@node$i/" /home/maxinet/.ssh/authorized_keys; done
-    printf '\n%s\n' 'showing /home/maxinet/.ssh/authorized_keys'
-    sudo -u maxinet cat /home/maxinet/.ssh/authorized_keys
-    sudo -u maxinet chmod 755 /home/maxinet/.ssh/authorized_keys
-    printf '%s\n' $'Host *\nStrictHostKeyChecking no' | \
-	sudo -u maxinet tee --append /home/maxinet/.ssh/config
-    sudo -u maxinet chmod 400 /home/maxinet/.ssh/config
+
+configure_Postgres() {
+        printf '\n\e[1;33m%-6s\e[m\n' '-- Configuring Postgres ...'
+        sudo -u postgres psql -c "DROP EXTENSION adminpack;" &> /dev/null
+        sudo -u postgres psql -c "REVOKE CONNECT ON DATABASE "dbminisecbgp" FROM public;" &> /dev/null
+        sudo -u postgres psql -c "SELECT pg_terminate_backend(pg_stat_activity.pid) FROM pg_stat_activity WHERE pg_stat_activity.datname = 'dbminisecbgp';" &> /dev/null
+        sudo -u postgres dropdb dbminisecbgp &> /dev/null
+        sudo -u postgres psql -c "DROP USER minisecbgp;" &> /dev/null
+        sudo -u postgres psql -U postgres -d postgres -c "alter user postgres with password 'postgres';"
+        sudo -u postgres psql -c "CREATE EXTENSION adminpack;"
+        sudo -u postgres psql -c "CREATE USER minisecbgp WITH ENCRYPTED PASSWORD 'minisecbgp';"
+        sudo -u postgres createdb -O minisecbgp dbminisecbgp
 }
 
-function node_file() {
-    printf '\n\e[1;33m%-6s\e[m\n' '-- Creating configuration file for all cluster nodes ...'
-    printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous configuration.'
-    sudo -u $USER rm -rf $INSTALL_DIR/nodes 2> /dev/null
-    sudo -u $USER mkdir -p $INSTALL_DIR/nodes
-    for ((i=1; i<=$var_qtd_hosts; i++)); do
-        sudo -u $USER cp $INSTALL_DIR/scripts/nodes/template_node.sh $INSTALL_DIR/nodes/node$i.sh;
-        sudo -u $USER sed -i -- 's/<node_number>/'$i'/g' $INSTALL_DIR/nodes/node$i.sh;
-        sudo -u $USER chmod 755 $INSTALL_DIR/nodes/node$i.sh; done
-    printf '\n%s\n' 'showing nodes file'
-    cat $INSTALL_DIR/nodes/node*.sh
+
+install_app() {
+        printf '\n\e[1;33m%-6s\e[m\n' '-- Installing MiniSecBGP Application ...'
+        source "$LOCAL_HOME"/venv/bin/activate
+        pip3 install -e .
+        rm "$LOCAL_HOME"/minisecbgp/alembic/versions/*.py &> /dev/null
+        alembic -c minisecbgp.ini revision --autogenerate -m "init"
+        alembic -c minisecbgp.ini upgrade head
+
+        MiniSecBGP_initialize_db --config-file="$LOCAL_HOME"/minisecbgp.ini
+
+        printf '\n\e[1;33m%-6s\e[m\n' '-- Installing Sample Topologies ...'
+
+#        printf '\n%s\n' 'CAIDA AS-Relationship realistic topology 20191201.as-rel2 ...'
+#        cp "$LOCAL_HOME"/minisecbgp/static/topology/20191201.as-rel2.txt.bz2 /tmp/
+#        MiniSecBGP_realistic_topology --config-file="$LOCAL_HOME"/minisecbgp.ini --file='20191201.as-rel2.txt.bz2'
+
+#        printf '\n%s\n' 'Manual topology Minimal-Topology-Example.MiniSecBGP ...'
+#        cp "$LOCAL_HOME"/minisecbgp/static/topology/Minimal-Topology-Example.MiniSecBGP /tmp/
+#        MiniSecBGP_manual_topology --config-file="$LOCAL_HOME"/minisecbgp.ini --file='/tmp/Minimal-Topology-Example.MiniSecBGP'
+
+#        printf '\n%s\n' 'Manual topology manual_topology1.MiniSecBGP ...'
+#        cp "$LOCAL_HOME"/minisecbgp/static/topology/manual_topology1.MiniSecBGP /tmp/
+#        MiniSecBGP_manual_topology --config-file="$LOCAL_HOME"/minisecbgp.ini --file='/tmp/manual_topology1.MiniSecBGP'
+
+#        printf '\n%s\n' 'Manual topology manual_topology2.MiniSecBGP ...'
+#        cp "$LOCAL_HOME"/minisecbgp/static/topology/manual_topology2.MiniSecBGP /tmp/
+#        MiniSecBGP_manual_topology --config-file="$LOCAL_HOME"/minisecbgp.ini --file='/tmp/manual_topology2.MiniSecBGP'
+
+#        printf '\n%s\n' 'Manual topology manual_topology3.MiniSecBGP ...'
+#        cp "$LOCAL_HOME"/minisecbgp/static/topology/manual_topology3.MiniSecBGP /tmp/
+#        MiniSecBGP_manual_topology --config-file="$LOCAL_HOME"/minisecbgp.ini --file='/tmp/manual_topology3.MiniSecBGP'
+
+        printf '\n%s\n' 'BGPlay scenario Youtube_vs_PakistanTelecom.BGPlay ...'
+        cp "$LOCAL_HOME"/minisecbgp/static/topology/Youtube_vs_Pakistan_Telecom.BGPlay /tmp/
+        MiniSecBGP_bgplay_topology --config-file="$LOCAL_HOME"/minisecbgp.ini --file='/tmp/Youtube_vs_Pakistan_Telecom.BGPlay'
+
+#        printf '\n%s\n' 'BGPlay topology BGPlay_Test_Scenario.BGPlay ...'
+#        cp "$LOCAL_HOME"/minisecbgp/static/topology/BGPlay_Test_Scenario.BGPlay /tmp/
+#        MiniSecBGP_bgplay_topology --config-file="$LOCAL_HOME"/minisecbgp.ini --file='/tmp/BGPlay_Test_Scenario.BGPlay'
+
+#        printf '\n%s\n' 'BGPlay topology Santander_2018_02.BGPlay ...'
+#        cp "$LOCAL_HOME"/minisecbgp/static/topology/Santander_2018_02.BGPlay /tmp/
+#        MiniSecBGP_bgplay_topology --config-file="$LOCAL_HOME"/minisecbgp.ini --file='/tmp/Santander_2018_02.BGPlay'
+
+        printf '\n\e[1;33m%-6s\e[m\n' '-- Configuring MiniSecBGP Application ...'
+        MiniSecBGP_node_create --config-file=minisecbgp.ini --node-ip-address=$var_ip --master=True
+
+        MiniSecBGP_node_service --config-file=minisecbgp.ini --execution-type='manual' --node-ip-address=$var_ip --username=$WHOAMI --password=$PASSWORD
+
+	      MiniSecBGP_node_configuration --config-file=minisecbgp.ini --node-ip-address=$var_ip --username=$WHOAMI --password=$PASSWORD
+
+	      MiniSecBGP_node_install --config-file=minisecbgp.ini --node-ip-address=$var_ip --username=$WHOAMI --password=$PASSWORD
+
+	      printf '%s%s%s%s%s%s%s%s%s\n' $'# Scheduled realistic topology update (verify every day if today is the day for update)
+0 3 * * * minisecbgpuser '$LOCAL_HOME'/venv/bin/MiniSecBGP_realistic_topology_scheduled_download --config-file='$LOCAL_HOME'/minisecbgp.ini' | sudo tee /etc/cron.d/MiniSecBGP_realistic_topology_scheduled_download
+
 }
 
-function install_app_containernet() {
-    printf '\n\e[1;32m%-6s\e[m\n' '-- Installing Containernet ...'
-    printf '\n\e[1;33m%-6s\e[m\n' 'Resolving requirements'
-    sudo apt-get install ansible git aptitude -y
-    sudo -u $USER git clone https://github.com/containernet/containernet.git $INSTALL_DIR/containernet
-    cd $INSTALL_DIR/containernet/ansible
-    sudo ansible-playbook -i "localhost," -c local install.yml
-    cd ..
-    sudo python setup.py install
+
+configure_uwsgi() {
+        printf '\n\e[1;33m%-6s\e[m\n' '-- Configuring uWSGI deamon ...'
+        printf '%s%s%s%s%s%s%s%s%s\n' \
+'[Unit]
+Description=uwsgi daemon
+After=network.target
+[Service]
+User=' $WHOAMI '
+Group=www-data
+WorkingDirectory=' $LOCAL_HOME '
+ExecStart=' $LOCAL_HOME '/venv/bin/uwsgi --ini-paste-logged ' $LOCAL_HOME '/minisecbgp.ini
+[Install]
+WantedBy=multi-user.target' | sudo tee /etc/systemd/system/uwsgi.service
 }
 
-function install_metis() {
-    printf '\e[1;33m%-6s%s\e[m\n' 'Installing METIS in ' $INSTALL_DIR/metis
-    printf '\n\e[1;33m%-6s\e[m\n' 'Resolving requirements'
-    sudo apt install cmake -y
-    printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous configuration.'
-    sudo -u $USER rm -rf $INSTALL_DIR/metis-5.1.0* 2> /dev/null
 
-    #[ -f $INSTALL_DIR/metis-5.1.0.tar.gz ] || sudo -u $USER wget http://glaros.dtc.umn.edu/gkhome/fetch/sw/metis/metis-5.1.0.tar.gz -P $INSTALL_DIR
-    [ -f $INSTALL_DIR/metis-5.1.0.tar.gz ] || sudo -u $USER wget http://192.168.56.1/metis-5.1.0.tar.gz -P $INSTALL_DIR 
-    
-    sudo -u $USER tar -xvzf $INSTALL_DIR/metis-5.1.0.tar.gz -C $INSTALL_DIR
-    cd $INSTALL_DIR/metis-5.1.0
-    sudo make config shared=1
-    sudo make
-    sudo make install
-    sudo ldconfig
+configure_nginx() {
+        printf '\n\e[1;33m%-6s\e[m\n' 'Configuring Nginx...'
+        printf '%s%s%s%s%s%s%s%s%s\n' \
+'upstream ' $PROJECT_NAME ' {
+        server unix:///tmp/MiniSecBGP.sock;
+}
+server {
+        listen 80;
+        server_name [::]:80 default_server;
+        access_log ' $LOCAL_HOME '/access.log;
+        location / {
+                proxy_set_header        Host $http_host;
+                proxy_set_header        X-Real-IP $remote_addr;
+                proxy_set_header        X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header        X-Forwarded-Proto $scheme;
+                client_max_body_size    10m;
+                client_body_buffer_size 128k;
+                proxy_connect_timeout   60s;
+                proxy_send_timeout      90s;
+                proxy_read_timeout      90s;
+                proxy_buffering         off;
+                proxy_temp_file_write_size 64k;
+                proxy_pass http://' $PROJECT_NAME ';
+                proxy_redirect          off;
+        }
+}' | sudo tee /etc/nginx/sites-available/$PROJECT_NAME
+	sudo rm /etc/nginx/sites-enabled/default &> /dev/null
+	sudo rm /etc/nginx/sites-available/default &> /dev/null
+        sudo rm /etc/nginx/sites-enabled/$PROJECT_NAME &> /dev/null
+        sudo ln -s /etc/nginx/sites-available/$PROJECT_NAME /etc/nginx/sites-enabled
+        sudo nginx -t
 }
 
-function install_app_maxinet() {
-    printf '\n\e[1;32m%-6s\e[m\n' '-- Installing MaxiNet ...'
-    printf '\n\e[1;33m%-6s\e[m\n' 'Resolving requirements'
-    sudo -H pip install --upgrade --force-reinstall -U Pyro4
 
-    install_metis;
-
-    printf '\e[1;33m%-6s\e[m\n' 'Erasing all previous configuration.'
-    sudo -u $USER rm -rf $INSTALL_DIR/maxinet
-    sudo -u $USER git clone git://github.com/MaxiNet/MaxiNet.git $INSTALL_DIR/MaxiNet
-    cd $INSTALL_DIR/MaxiNet
-    sudo -u $USER git checkout v1.2
-    sudo make install
-    sudo cp $INSTALL_DIR/MaxiNet/share/MaxiNet-cfg-sample /etc/MaxiNet.cfg
-    printf '\e[1;33m%-6s\e[m\n' 'Configuring MaxiNet config file.'
-    sudo sed -i -- 's/password = HalloWelt/password = maxinet/g' /etc/MaxiNet.cfg
-    sudo sed -i -- 's/controller = 192.168.123.1:6633/controller = 192.168.254.1:6633/g' /etc/MaxiNet.cfg
-    sudo sed -i -- 's/logLevel = INFO/logLevel = ERROR/g' /etc/MaxiNet.cfg
-    sudo sed -i -- 's/sshuser = root/sshuser = maxinet/g' /etc/MaxiNet.cfg
-    sudo sed -i -- 's/usesudo = False/usesudo = True/g' /etc/MaxiNet.cfg
-    sudo sed -i -- 's/ip = 192.168.123.1/ip = 192.168.254.1/g' /etc/MaxiNet.cfg
-    sudo sed -i -- 19,'$d' /etc/MaxiNet.cfg
-    for ((i=1; i<=$var_qtd_hosts; i++)); do 
-        printf '[node'$i$'] \nip = 192.168.254.'$i$' \nshare = 1\n\n' | sudo tee --append /etc/MaxiNet.cfg; done
-    sudo cat /etc/MaxiNet.cfg    
+restart_services() {
+        printf '\n\e[1;33m%-6s\e[m\n' 'Restarting all services...'
+        sudo systemctl daemon-reload
+        sudo systemctl restart uwsgi
+        sudo systemctl enable uwsgi
+        sudo systemctl restart nginx
 }
 
-# set up build directory
-USER=$(whoami)
-HOME_DIR=$(echo $HOME)
-INSTALL_DIR=$HOME_DIR/MiniSecBGP
+
+HOSTNAME=$(hostname)
+IP_ADDRESSES=$(hostname --all-ip-addresses || hostname -I)
+IP_ARRAY=($IP_ADDRESSES)
+WHOAMI=$(whoami)
+LOCAL_HOME=$(pwd)
+PROJECT_NAME=MiniSecBGP
 
 welcome;
-qtd_hosts;
-update_SO_install_packages;
-network_configuration;
-hosts_file;
-user;
-ssh_file;
-node_file;
-install_app_containernet;
-install_app_maxinet;
+network_address;
+update;
+#configure_hosts;
+install_Linux_reqs;
+virtualenv;
+install_Python_reqs;
+configure_Postgres;
+install_app;
+configure_uwsgi;
+configure_nginx;
+restart_services;

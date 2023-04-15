@@ -1,0 +1,51 @@
+body { 
+  padding: 60px;
+}
+
+footer, .span12-home {
+  text-align: center;
+  padding-top: 60px;
+}
+
+.nav-tabs {
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: -webkit-box;
+  display: -moz-box;
+}
+.nav-tabs>li {
+  float: none;
+}
+
+/* frame color */
+.frame-color {
+    border: 1px solid skyblue;
+    padding: 6px;
+    border-radius: 8px;
+}
+
+/* Messages */
+.loginMessage {
+  color: #c82603;
+  font-weight: bold;
+  text-align: center;
+  font-size: 200%;
+}
+
+.successMessage {
+  text-align: center;
+  color: #249a69;
+  font-weight: bold;
+}
+
+.warningMessage {
+  text-align: center;
+  color: #ff8900;
+  font-weight: bold;
+}
+
+.errorMessage {
+  text-align: center;
+  color: #c82603;
+  font-weight: bold;
+}

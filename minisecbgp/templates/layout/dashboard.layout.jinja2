@@ -1,0 +1,33 @@
+{% extends "home.layout.jinja2" %}
+
+{% block contentHome %}
+
+  <div class="container-fluid">
+    <div class="row-fluid">
+      <div class="span3">
+        <div class="well sidebar-nav">
+          <ul class="nav nav-list">
+            <li class="nav-header">Administration</li>
+              <li><a href="{{ request.route_url('user') }}">Users</a></li>
+              <li><a href="{{ request.route_url('cluster') }}">Cluster</a></li>
+            <li class="nav-header">Topology</li>
+              <li><a href="{{ request.route_url('topologies') }}">All Topologies</a></li>
+              <li><a href="{{ request.route_url('manualTopologies') }}"> &raquo; MiniSecBGP</a></li>
+              <li><a href="{{ request.route_url('realisticTopologies') }}"> &raquo; CAIDA AS-Relationship</a></li>
+              <li><a href="{{ request.route_url('bgplayTopologies') }}"> &raquo; RIPE RIPEstat</a></li>
+            <li class="nav-header">Analysis</li>
+              <li><a href="{{ request.route_url('hijack') }}">Hijack</a></li>
+              <!--- <li><a href="{{ request.route_url('hijackAttackScenario') }}"> &raquo; Attack Scenario</a></li> -->
+              <li><a href="{{ request.route_url('hijackRealisticAnalysis') }}"> &raquo; Realistic Analysis</a></li>
+          </ul>
+        </div><!--/.well -->
+      </div><!--/span-->
+      <div class="span9">
+
+        {% block contentDashboard %} {% endblock contentDashboard %}
+
+      </div><!--/span-->
+    </div><!--/row-->
+  </div>
+
+{% endblock contentHome %}

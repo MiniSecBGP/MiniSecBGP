@@ -1,0 +1,87 @@
+{% extends "cluster.jinja2" %}
+
+{% block contentCluster %}
+
+<div id="aum" class="container-fluid">
+  <div class="row-fluid">
+    <div class="span12">
+
+      <meta http-equiv="refresh" content="60;URL= '{{ cluster_url }}'">
+
+      <script type="text/javascript" src="{{request.static_url('minisecbgp:static/vis-js/js/vis.js')}}"></script>
+      <link href="{{request.static_url('minisecbgp:static/vis-js/css/vis-network.min.css')}}" rel="stylesheet" type="text/css" />
+
+      <style type="text/css">
+        #mynetwork {
+            width: 600x;
+            height: 600px;
+            border: 1px solid lightgray;
+        }
+      </style>
+
+      <div id="mynetwork"></div>
+
+      <script type="text/javascript">
+
+        // provide the DIR variable path
+        var DIR = "{{request.static_url('minisecbgp:static/vis-js/img/')}}";
+
+        var nodes = new vis.DataSet([
+
+          {id: 'network',
+           label: 'network',
+           image: DIR + 'network.png',
+           shape: 'image',
+           url: '{{ cluster_url }}',
+          },
+
+          {% for node in nodes %}
+            {id: {{ node.id }},
+             font: {color: ( {{ node.all_services }} == 0 && {{ node.all_configurations }} == 0 && {{ node.all_installs }} == 0 ? 'green' :
+             ( {{ node.all_installs }} == 1 || {{ node.all_configurations }} == 1 ? 'red' : 'orange'))},
+             label: ( '{{ node.master }}' +
+             '\nnode: {{ node.node }} ' +
+             '\nservice: ' + ( {{ node.all_services }} == 0 ? 'OK' : ( {{ node.all_services }} == 1 ? 'ERROR' : 'Installing' ) ) +
+             '\nconfig: ' + ( {{ node.all_configurations }} == 0 ? 'OK' : ( {{ node.all_configurations }} == 1 ? 'ERROR' : 'Installing' ) ) +
+             '\ninstall: ' + ( {{ node.all_installs }} == 0 ? 'OK' : ( {{ node.all_installs }} == 1 ? 'ERROR' : 'Installing' ) ) ),
+             image: DIR + ( '{{ node.master }}' == 'worker' ? 'computer.png' : 'server.png'),
+             shape: 'image',
+             url: '{{ cluster_detail_url }}{{ node.id }}'
+            },
+          {% endfor %}
+
+        ]);
+
+	    var edges = new vis.DataSet([
+
+          {% for node in nodes %}
+            {from: 'network', to: {{ node.id|tojson }}, length: 250 },
+          {% endfor %}
+
+	    ]);
+
+        // create a network
+        var container = document.getElementById('mynetwork');
+        var data = {
+            nodes: nodes,
+            edges: edges
+        };
+        var options = {};
+        var network = new vis.Network(container, data, options);
+
+        network.on("selectNode", function (params) {
+            if (params.nodes.length === 1) {
+                var node = nodes.get(params.nodes[0]);
+                window.open(node.url, '_self');
+            }
+        });
+
+      </script>
+
+      <p align="center">* server status checked every minute</p>
+
+    </div>
+  </div>
+</div>  
+
+{% endblock contentCluster %}
