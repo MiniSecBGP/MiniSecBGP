@@ -96,6 +96,8 @@ virtualenv() {
 
 install_Python_reqs() {
         printf '\n\e[1;33m%-6s\e[m\n' '-- Installing Python prerequisites ...'
+	pip install --upgrade --force-reinstall -U pathlib 
+	pip install --upgrade --force-reinstall -U termcolor
         pip3 install --upgrade --force-reinstall -U wheel 
 	pip3 install --upgrade --force-reinstall -U pillow
 	pip3 install --upgrade --force-reinstall -U plotnine
