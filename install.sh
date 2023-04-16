@@ -166,11 +166,11 @@ install_app() {
 
         MiniSecBGP_node_service --config-file=minisecbgp.ini --execution-type='manual' --node-ip-address=$var_ip --username=$WHOAMI --password=$PASSWORD
 
-	      MiniSecBGP_node_configuration --config-file=minisecbgp.ini --node-ip-address=$var_ip --username=$WHOAMI --password=$PASSWORD
+	MiniSecBGP_node_configuration --config-file=minisecbgp.ini --node-ip-address=$var_ip --username=$WHOAMI --password=$PASSWORD
 
-	      MiniSecBGP_node_install --config-file=minisecbgp.ini --node-ip-address=$var_ip --username=$WHOAMI --password=$PASSWORD
+	MiniSecBGP_node_install --config-file=minisecbgp.ini --node-ip-address=$var_ip --username=$WHOAMI --password=$PASSWORD
 
-	      printf '%s%s%s%s%s%s%s%s%s\n' $'# Scheduled realistic topology update (verify every day if today is the day for update)
+	printf '%s%s%s%s%s%s%s%s%s\n' $'# Scheduled realistic topology update (verify every day if today is the day for update)
 0 3 * * * minisecbgpuser '$LOCAL_HOME'/venv/bin/MiniSecBGP_realistic_topology_scheduled_download --config-file='$LOCAL_HOME'/minisecbgp.ini' | sudo tee /etc/cron.d/MiniSecBGP_realistic_topology_scheduled_download
 
 }
@@ -245,7 +245,6 @@ PROJECT_NAME=MiniSecBGP
 welcome;
 network_address;
 update;
-#configure_hosts;
 install_Linux_reqs;
 virtualenv;
 install_Python_reqs;
